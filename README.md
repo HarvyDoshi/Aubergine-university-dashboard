@@ -51,9 +51,13 @@ A full-stack web application that allows users to search for universities worldw
 ![Dashboard Screenshot](dashboard search.png)
 
 ### 2. Stats
+<img width="955" height="568" alt="dashboard stats" src="https://github.com/user-attachments/assets/37075170-24f7-43cc-b03a-9a58e668e981" />
+
 ![Filter Screenshot](dashboard stats.png)
 
 ### 3. Downloaded University Card (JPEG)
+![Bhagwan Parshuram Institute of Technology](https://github.com/user-attachments/assets/bc5a3753-389d-48a5-b38e-ed3a4cf67cb6)
+
 ![Card Screenshot](Bhagwan Parshuram Institute of Technology.png)
 
 ---
