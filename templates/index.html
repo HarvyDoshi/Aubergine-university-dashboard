@@ -1,0 +1,264 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        .uni-card { transition: transform 0.2s; }
+        .uni-card:hover { transform: translateY(-5px); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        /* Modal Animation */
+        .modal { transition: opacity 0.3s ease-in-out; }
+        .modal-content { transition: transform 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <div class="w-20 bg-slate-900 text-white flex flex-col items-center py-6 shadow-xl z-20">
+            <button onclick="window.location.reload()" class="mb-8 p-3 rounded-xl hover:bg-slate-700 transition-colors duration-200 group" title="Dashboard Home">
+                <div class="text-2xl group-hover:scale-110 transition-transform">🏠</div>
+            </button>
+            
+            <button onclick="openStats()" class="mb-8 p-3 rounded-xl hover:bg-slate-700 transition-colors duration-200 group" title="Analytics">
+                <div class="text-2xl group-hover:scale-110 transition-transform">📊</div>
+            </button>
+
+            <button class="mt-auto mb-6 p-3 rounded-xl hover:bg-slate-700 transition-colors duration-200" title="Settings">
+                <div class="text-2xl">⚙️</div>
+            </button>
+        </div>
+
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+            
+            <header class="bg-white shadow-sm z-10 px-8 py-5 border-b border-gray-100">
+                <h1 class="text-3xl font-bold text-slate-800">Dashboard Overview</h1>
+                <p class="text-gray-500 mt-1">Search for universities by Country and State.</p>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-8">
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <div class="md:col-span-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Country</label>
+                            <input type="text" id="countryInput" placeholder="e.g. India, Turkey" 
+                                   class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                   onkeypress="handleEnter(event)">
+                        </div>
+                        <div class="md:col-span-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">State / Province</label>
+                            <select id="provinceSelect" onchange="fetchUniversities(false)" disabled
+                                    class="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-400">
+                                <option value="">Select a Province...</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-4 flex items-end justify-between">
+                            <button onclick="fetchUniversities(true)" 
+                                    class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 shadow-md shadow-blue-200">
+                                Search Country
+                            </button>
+                            <span id="resultCount" class="text-gray-500 text-sm font-medium mb-3">Results: 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
+                    <div class="col-span-full text-center text-gray-400 py-10">
+                        Type a country name above to begin.
+                    </div>
+                </div>
+            </div>
+
+            <div id="statsModal" class="hidden absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 modal opacity-0">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 modal-content transform scale-95">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800">Global Analytics</h2>
+                        <button onclick="closeStats()" class="text-gray-400 hover:text-red-500 text-2xl">&times;</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6 mb-8">
+                        <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                            <p class="text-sm font-semibold text-blue-600 uppercase tracking-wide">Total Universities</p>
+                            <p class="text-4xl font-bold text-slate-800 mt-2" id="totalUnis">-</p>
+                        </div>
+                        <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+                            <p class="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Total Countries</p>
+                            <p class="text-4xl font-bold text-slate-800 mt-2" id="totalCountries">-</p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Top 5 Countries by Universities</h3>
+                    <div class="space-y-4" id="topCountriesList">
+                        <div class="animate-pulse flex space-x-4">
+                            <div class="h-4 bg-gray-200 rounded w-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const countryInput = document.getElementById('countryInput');
+        const provinceSelect = document.getElementById('provinceSelect');
+        const cardsContainer = document.getElementById('cardsContainer');
+        const resultCount = document.getElementById('resultCount');
+        const statsModal = document.getElementById('statsModal');
+
+        // --- STATS LOGIC ---
+        async function openStats() {
+            statsModal.classList.remove('hidden');
+            // Small timeout to allow display:block to apply before opacity transition
+            setTimeout(() => {
+                statsModal.classList.remove('opacity-0');
+                statsModal.querySelector('.modal-content').classList.remove('scale-95');
+                statsModal.querySelector('.modal-content').classList.add('scale-100');
+            }, 10);
+
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+                
+                document.getElementById('totalUnis').textContent = data.total_universities.toLocaleString();
+                document.getElementById('totalCountries').textContent = data.total_countries.toLocaleString();
+
+                // Render Top Countries Bars
+                const list = document.getElementById('topCountriesList');
+                list.innerHTML = '';
+                
+                // Find max count for scaling bar width
+                const maxCount = data.top_countries[0].count;
+
+                data.top_countries.forEach(c => {
+                    const percentage = (c.count / maxCount) * 100;
+                    const item = document.createElement('div');
+                    item.innerHTML = `
+                        <div class="flex justify-between text-sm font-medium text-gray-700 mb-1">
+                            <span>${c.country}</span>
+                            <span>${c.count}</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2.5">
+                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function closeStats() {
+            statsModal.classList.add('opacity-0');
+            statsModal.querySelector('.modal-content').classList.remove('scale-100');
+            statsModal.querySelector('.modal-content').classList.add('scale-95');
+            
+            setTimeout(() => {
+                statsModal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Close modal when clicking outside
+        statsModal.addEventListener('click', (e) => {
+            if (e.target === statsModal) closeStats();
+        });
+
+        // --- EXISTING LOGIC ---
+        function handleEnter(e) { if (e.key === 'Enter') fetchUniversities(true); }
+
+        async function fetchUniversities(isNewCountrySearch = false) {
+            const country = countryInput.value.trim();
+            const province = provinceSelect.value;
+            if (!country) { alert("Please enter a country name first."); return; }
+
+            if (isNewCountrySearch) await loadProvinces(country);
+
+            let url = `/search?country=${encodeURIComponent(country)}`;
+            if (province) url += `&state-province=${encodeURIComponent(province)}`;
+
+            cardsContainer.style.opacity = '0.5';
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                renderCards(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                cardsContainer.style.opacity = '1';
+            }
+        }
+
+        async function loadProvinces(country) {
+            try {
+                const response = await fetch(`/provinces?country=${encodeURIComponent(country)}`);
+                const provinces = await response.json();
+                provinceSelect.innerHTML = '<option value="">Select a Province...</option>';
+                if (provinces.length > 0) {
+                    provinceSelect.disabled = false;
+                    provinceSelect.classList.remove('bg-gray-50', 'text-gray-400');
+                    provinces.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p; opt.textContent = p; provinceSelect.appendChild(opt);
+                    });
+                } else {
+                    provinceSelect.disabled = true;
+                    provinceSelect.classList.add('bg-gray-50', 'text-gray-400');
+                    const opt = document.createElement('option');
+                    opt.textContent = "No states found"; provinceSelect.appendChild(opt);
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function renderCards(universities) {
+            cardsContainer.innerHTML = '';
+            resultCount.textContent = `Results: ${universities.length}`;
+            if (universities.length === 0) {
+                cardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">No universities found.</div>`;
+                return;
+            }
+            universities.forEach(uni => {
+                const webPage = uni.web_pages && uni.web_pages.length > 0 ? uni.web_pages[0] : '#';
+                const cardId = `card-${Math.random().toString(36).substr(2, 9)}`;
+                const card = document.createElement('div');
+                card.className = "uni-card bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md";
+                card.id = cardId;
+                card.innerHTML = `
+                    <div>
+                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded uppercase tracking-wider">
+                            ${uni['state-province'] || uni.country}
+                        </span>
+                        <h3 class="text-lg font-bold text-slate-800 mt-2">${uni.name}</h3>
+                        <p class="text-sm text-gray-400">${uni.country}</p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                        <a href="${webPage}" target="_blank" class="text-blue-600 text-sm font-medium">Visit Website &rarr;</a>
+                        <button onclick="downloadCard('${cardId}', '${uni.name.replace(/'/g, "")}')" class="text-gray-400 hover:text-blue-600">⬇️</button>
+                    </div>`;
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        function downloadCard(elementId, fileName) {
+            const element = document.getElementById(elementId);
+            element.style.transform = "none";
+            html2canvas(element, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${fileName}.jpg`;
+                link.href = canvas.toDataURL("image/jpeg", 0.9);
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
