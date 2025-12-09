@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,38 +41,51 @@
             
             <header class="bg-white shadow-sm z-10 px-8 py-5 border-b border-gray-100">
                 <h1 class="text-3xl font-bold text-slate-800">Dashboard Overview</h1>
-                <p class="text-gray-500 mt-1">Search for universities by Country and State.</p>
+                <p class="text-gray-500 mt-1">Search for universities by Name, Country, or State.</p>
             </header>
 
             <div class="flex-1 overflow-y-auto p-8">
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                    
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                        <div class="md:col-span-4">
+                        
+                        <div class="md:col-span-3">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Country</label>
-                            <input type="text" id="countryInput" placeholder="e.g. India, Turkey" 
+                            <input type="text" id="countryInput" placeholder="e.g. India" 
                                    class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                    onkeypress="handleEnter(event)">
                         </div>
-                        <div class="md:col-span-4">
+
+                        <div class="md:col-span-3">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">State / Province</label>
                             <select id="provinceSelect" onchange="fetchUniversities(false)" disabled
                                     class="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-400">
                                 <option value="">Select a Province...</option>
                             </select>
                         </div>
-                        <div class="md:col-span-4 flex items-end justify-between">
-                            <button onclick="fetchUniversities(true)" 
-                                    class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 shadow-md shadow-blue-200">
-                                Search Country
-                            </button>
-                            <span id="resultCount" class="text-gray-500 text-sm font-medium mb-3">Results: 0</span>
+
+                        <div class="md:col-span-3">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">University Name</label>
+                            <input type="text" id="nameInput" placeholder="e.g. Technology" 
+                                   class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                   onkeypress="handleEnter(event)">
                         </div>
+
+                        <div class="md:col-span-3 flex items-end justify-between gap-4">
+                            <button onclick="fetchUniversities(true)" 
+                                    class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 shadow-md shadow-blue-200">
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-right">
+                        <span id="resultCount" class="text-gray-500 text-sm font-medium">Results: 0</span>
                     </div>
                 </div>
 
                 <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
                     <div class="col-span-full text-center text-gray-400 py-10">
-                        Type a country name above to begin.
+                        Enter details above to begin searching.
                     </div>
                 </div>
             </div>
@@ -111,6 +123,7 @@
     <script>
         const countryInput = document.getElementById('countryInput');
         const provinceSelect = document.getElementById('provinceSelect');
+        const nameInput = document.getElementById('nameInput'); // Select the new Name input
         const cardsContainer = document.getElementById('cardsContainer');
         const resultCount = document.getElementById('resultCount');
         const statsModal = document.getElementById('statsModal');
@@ -118,7 +131,6 @@
         // --- STATS LOGIC ---
         async function openStats() {
             statsModal.classList.remove('hidden');
-            // Small timeout to allow display:block to apply before opacity transition
             setTimeout(() => {
                 statsModal.classList.remove('opacity-0');
                 statsModal.querySelector('.modal-content').classList.remove('scale-95');
@@ -132,11 +144,8 @@
                 document.getElementById('totalUnis').textContent = data.total_universities.toLocaleString();
                 document.getElementById('totalCountries').textContent = data.total_countries.toLocaleString();
 
-                // Render Top Countries Bars
                 const list = document.getElementById('topCountriesList');
                 list.innerHTML = '';
-                
-                // Find max count for scaling bar width
                 const maxCount = data.top_countries[0].count;
 
                 data.top_countries.forEach(c => {
@@ -154,38 +163,42 @@
                     list.appendChild(item);
                 });
 
-            } catch (err) {
-                console.error(err);
-            }
+            } catch (err) { console.error(err); }
         }
 
         function closeStats() {
             statsModal.classList.add('opacity-0');
             statsModal.querySelector('.modal-content').classList.remove('scale-100');
             statsModal.querySelector('.modal-content').classList.add('scale-95');
-            
-            setTimeout(() => {
-                statsModal.classList.add('hidden');
-            }, 300);
+            setTimeout(() => { statsModal.classList.add('hidden'); }, 300);
         }
 
-        // Close modal when clicking outside
         statsModal.addEventListener('click', (e) => {
             if (e.target === statsModal) closeStats();
         });
 
-        // --- EXISTING LOGIC ---
+        // --- SEARCH LOGIC ---
         function handleEnter(e) { if (e.key === 'Enter') fetchUniversities(true); }
 
         async function fetchUniversities(isNewCountrySearch = false) {
             const country = countryInput.value.trim();
             const province = provinceSelect.value;
-            if (!country) { alert("Please enter a country name first."); return; }
+            const name = nameInput.value.trim(); // Get name value
 
-            if (isNewCountrySearch) await loadProvinces(country);
+            // Validation: Require at least one field
+            if (!country && !name) { 
+                alert("Please enter a Country OR a University Name to search."); 
+                return; 
+            }
 
-            let url = `/search?country=${encodeURIComponent(country)}`;
+            // If country is present and it's a new search (button click or Enter), load provinces
+            if (isNewCountrySearch && country) await loadProvinces(country);
+
+            // Build URL
+            let url = `/search?limit=100`;
+            if (country) url += `&country=${encodeURIComponent(country)}`;
             if (province) url += `&state-province=${encodeURIComponent(province)}`;
+            if (name) url += `&name=${encodeURIComponent(name)}`;
 
             cardsContainer.style.opacity = '0.5';
             try {
@@ -224,7 +237,7 @@
             cardsContainer.innerHTML = '';
             resultCount.textContent = `Results: ${universities.length}`;
             if (universities.length === 0) {
-                cardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">No universities found.</div>`;
+                cardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">No universities found matching your criteria.</div>`;
                 return;
             }
             universities.forEach(uni => {
@@ -242,8 +255,11 @@
                         <p class="text-sm text-gray-400">${uni.country}</p>
                     </div>
                     <div class="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
-                        <a href="${webPage}" target="_blank" class="text-blue-600 text-sm font-medium">Visit Website &rarr;</a>
-                        <button onclick="downloadCard('${cardId}', '${uni.name.replace(/'/g, "")}')" class="text-gray-400 hover:text-blue-600">⬇️</button>
+                        <a href="${webPage}" target="_blank" class="text-blue-600 text-sm font-medium hover:text-blue-800 flex items-center gap-1">
+                            Visit Website &rarr;
+                        </a>
+                        <button onclick="downloadCard('${cardId}', '${uni.name.replace(/'/g, "")}')" 
+                                class="text-gray-400 hover:text-blue-600 p-2" title="Download Card">⬇️</button>
                     </div>`;
                 cardsContainer.appendChild(card);
             });
